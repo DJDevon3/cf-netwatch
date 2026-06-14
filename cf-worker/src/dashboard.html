@@ -15,11 +15,17 @@
   .controls select, .controls button { padding: 6px 14px; border-radius: 6px; border: 1px solid #30363d; background: #161b22; color: #c9d1d9; font-size: 0.875rem; cursor: pointer; }
   .controls button:hover { background: #21262d; }
   .chart-container { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin-bottom: 24px; position: relative; height: 400px; max-height: 70vh; min-height: 250px; }
-  .summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin-bottom: 24px; }
+  .summary { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-bottom: 24px; }
   .card { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 16px; }
   .card h3 { font-size: 0.875rem; color: #8b949e; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-  .card .value { font-size: 1.5rem; font-weight: 600; color: #f0f6fc; }
-  .card .detail { font-size: 0.75rem; color: #8b949e; margin-top: 2px; }
+  .card .metric-main { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+  .card .value { font-size: 1.65rem; font-weight: 600; color: #f0f6fc; line-height: 1; }
+  .card .metric-label { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.08em; }
+  .percentiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+  .percentile { background: #0d1117; border: 1px solid #30363d; border-radius: 6px; padding: 7px 8px; }
+  .percentile-label { display: block; font-size: 0.65rem; color: #8b949e; text-transform: uppercase; letter-spacing: 0.08em; }
+  .percentile-value { display: block; margin-top: 2px; color: #f0f6fc; font-size: 0.95rem; font-weight: 600; }
+  .card .detail { font-size: 0.75rem; color: #8b949e; margin-top: 10px; }
   .ok { color: #3fb950; }
   .fail { color: #f85149; }
   .error { background: #f8514920; color: #f85149; padding: 12px; border-radius: 6px; margin-bottom: 16px; display: none; }
@@ -30,7 +36,7 @@
 </head>
 <body>
 <h1>Ping Monitor Dashboard</h1>
-<p class="subtitle">Latency analytics per target. Each target pinged 10 times, and then we used the avg to calculate the min,avg, and max (of the avg) reported here.</p>
+<p class="subtitle">Latency analytics per target. Cards show median, p95, and p99 from each run's average ping latency; charts show bucketed average latency and packet loss.</p>
 
 <div class="error" id="error"></div>
 
@@ -175,6 +181,12 @@ function renderDashboard(json) {
   renderLossChart(json.series);
 }
 
+/**
+ * Renders the summary cards for each ping target, displaying latency percentiles,
+ * availability stats, and a sparkline visualization of recent latency data.
+ * @param {Array} summary - Array of summary objects with target stats (median_ms, p95_ms, p99_ms, ok, fail, availability)
+ * @param {Array} series - Array of time series data for each target (used for sparklines)
+ */
 function renderSummary(summary, series) {
   const el = document.getElementById('summary');
   if (!summary || summary.length === 0) {
@@ -186,6 +198,7 @@ function renderSummary(summary, series) {
     series.forEach(function(s) { seriesByTarget[s.target] = s; });
   }
   el.innerHTML = summary.map(function(s) {
+    const latencyForColor = numericLatency(s.median_ms) || numericLatency(s.avg_ms) || 0;
     const parts = ['<span class="ok">' + s.ok + ' ok</span>'];
     if (s.fail > 0) {
       parts.push('<span class="fail">' + s.fail + ' fail</span>');
@@ -195,15 +208,29 @@ function renderSummary(summary, series) {
       parts.push('<span>' + s.availability + '% up</span>');
     }
     const spark = seriesByTarget[s.target]
-      ? renderSparkline(seriesByTarget[s.target].avg_ms, sparklineColor(s.avg_ms))
+      ? renderSparkline(seriesByTarget[s.target].avg_ms, sparklineColor(latencyForColor))
       : '';
     return '<div class="card">' +
       '<h3>' + esc(s.target) + '</h3>' +
-      '<div class="value">' + s.avg_ms.toFixed(1) + ' ms</div>' +
+      '<div class="metric-main"><div class="value">' + formatLatencyMs(s.median_ms) + '</div><div class="metric-label">median</div></div>' +
+      '<div class="percentiles">' +
+        '<div class="percentile"><span class="percentile-label">p95</span><span class="percentile-value">' + formatLatencyMs(s.p95_ms) + '</span></div>' +
+        '<div class="percentile"><span class="percentile-label">p99</span><span class="percentile-value">' + formatLatencyMs(s.p99_ms) + '</span></div>' +
+      '</div>' +
       '<div class="detail">' + parts.join(' &middot; ') + '</div>' +
       spark +
     '</div>';
   }).join('');
+}
+
+function numericLatency(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+function formatLatencyMs(value) {
+  const n = numericLatency(value);
+  return n === null ? '-' : n.toFixed(1) + ' ms';
 }
 
 function sparklineColor(avgMs) {
@@ -216,6 +243,8 @@ function sparklineColor(avgMs) {
 
 function renderSparkline(data, color) {
   if (!data || data.length < 2) return '';
+  data = data.map(numericLatency).filter(v => v !== null);
+  if (data.length < 2) return '';
   var w = 200;
   var h = 36;
   var pad = 2;

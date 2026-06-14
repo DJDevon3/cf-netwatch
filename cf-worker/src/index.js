@@ -335,8 +335,26 @@ WHERE
 GROUP BY time_bucket, target
 ORDER BY time_bucket ASC, target ASC`;
 
+  const summarySql = `SELECT
+    blob2 AS target,
+    round(quantileExactWeighted(0.5)(double2, _sample_interval),2) AS median_ms,
+    round(quantileExactWeighted(0.95)(double2, _sample_interval),2) AS p95_ms,
+    round(quantileExactWeighted(0.99)(double2, _sample_interval),2) AS p99_ms
+FROM ${PING_ANALYTICS_DATASET}
+WHERE
+  timestamp > NOW() - INTERVAL '${hours}' HOUR AND
+  blob1='${PING_SOURCE_HOSTNAME}' AND
+  blob3 != 'fail' AND
+  doubl2 > 0 AND
+  not blob2 in(${PING_HIDDEN_TARGETS.map(t => `'${t}'`).join(',\n    ')})
+GROUP BY target
+ORDER BY target ASC`;
+
   try {
-    const result = await queryAnalyticsEngine(env, sql);
+    const [result, latencyResult] = await Promise.all([
+      queryAnalyticsEngine(env, sql),
+      queryAnalyticsEngine(env, summarySql),
+    ]);
 
     // AE SQL API returns { meta, data, rows } directly (no Cloudflare API wrapper)
     if (!result || !result.data || result.data.length === 0) {
@@ -379,6 +397,16 @@ ORDER BY time_bucket ASC, target ASC`;
 
     const series = Object.values(seriesMap);
 
+    // Merge true percentiles from SQL query into summary
+    const latencyByTarget = {};
+    for (const row of (latencyResult && latencyResult.data) || []) {
+      latencyByTarget[row.target] = {
+        median_ms: row.median_ms,
+        p95_ms: row.p95_ms,
+        p99_ms: row.p99_ms,
+      };
+    }
+
     // Summary per target
     const summary = series.map((s) => {
       const totalOk = s.ok_count.reduce((a, b) => a + b, 0);
@@ -387,9 +415,13 @@ ORDER BY time_bucket ASC, target ASC`;
       const avgLatency = s.avg_ms.length
         ? s.avg_ms.reduce((a, b) => a + b, 0) / s.avg_ms.length
         : 0;
+      const sqlLatency = latencyByTarget[s.target] || {};
       return {
         target: s.target,
         avg_ms: Math.round(avgLatency * 100) / 100,
+        median_ms: sqlLatency.median_ms != null ? sqlLatency.median_ms : null,
+        p95_ms: sqlLatency.p95_ms != null ? sqlLatency.p95_ms : null,
+        p99_ms: sqlLatency.p99_ms != null ? sqlLatency.p99_ms : null,
         ok: totalOk,
         fail: totalFail,
         availability: total ? Math.round((totalOk / total) * 10000) / 100 : 0,
