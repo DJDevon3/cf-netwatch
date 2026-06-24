@@ -42,20 +42,9 @@
 
 <div class="controls">
   <label for="range">Time range:</label>
-  <select id="range">
-    <option value="1">Last hour</option>
-    <option value="6">Last 6 hours</option>
-    <option value="12">Last 12 hours</option>
-    <option value="24" selected>Last 24 hours</option>
-    <option value="72">Last 3 days</option>
-    <option value="168">Last 7 days</option>
-  </select>
+  <select id="range"></select>
   <label for="interval">Bucket:</label>
-  <select id="interval">
-    <option value="15">15 minutes</option>
-    <option value="30">30 minutes</option>
-    <option value="60" selected>1 hour</option>
-  </select>
+  <select id="interval"></select>
   <button onclick="loadData()">Refresh</button>
 </div>
 
@@ -419,6 +408,17 @@ function esc(s) {
   el.textContent = s;
   return el.innerHTML;
 }
+
+function populateSelect(id, options, valueKey, labelKey) {
+  const sel = document.getElementById(id);
+  sel.innerHTML = options.map(function(o) {
+    const selected = o.default ? ' selected' : '';
+    return '<option value="' + o[valueKey] + '"' + selected + '>' + o[labelKey] + '</option>';
+  }).join('');
+}
+
+populateSelect('range', window.PING_RANGE_HOURS || [], 'hours', 'label');
+populateSelect('interval', window.PING_BUCKET_OPTIONS || [], 'minutes', 'label');
 
 loadData();
 setInterval(loadData, 5 * 60 * 1000);

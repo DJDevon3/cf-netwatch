@@ -7,8 +7,33 @@
 // Does not affect how data is stored in Cloudflare Analytics Engine.
 export const TIMEZONE = 'America/New_York';
 
-// These are options on the dashboard for grouping ping data.
-export const PING_BUCKET_MINUTES = new Set([15, 30, 60]);
+// Time range options shown on the dashboard (value in hours).
+// The entry marked default: true is selected on page load.
+export const PING_RANGE_HOURS = [
+  { hours: 1, label: 'Last hour' },
+  { hours: 6, label: 'Last 6 hours' },
+  { hours: 12, label: 'Last 12 hours' },
+  { hours: 24, label: 'Last 24 hours', default: true },
+  { hours: 72, label: 'Last 3 days' },
+  { hours: 168, label: 'Last 7 days' },
+  { hours: 336, label: 'Last 14 days' },
+];
+
+// Bucket options shown on the dashboard (value in minutes).
+// The entry marked default: true is selected on page load.
+export const PING_BUCKET_OPTIONS = [
+  { minutes: 15, label: '15 minutes' },
+  { minutes: 30, label: '30 minutes' },
+  { minutes: 60, label: '1 hour', default: true },
+  { minutes: 120, label: '2 hours' },
+  { minutes: 240, label: '4 hours' },
+  { minutes: 360, label: '6 hours' },
+  { minutes: 720, label: '12 hours' },
+];
+
+// Allowed bucket sizes (in minutes) for the analytics API.
+// Derived from PING_BUCKET_OPTIONS so the API and dashboard stay in sync.
+export const PING_BUCKET_MINUTES = new Set(PING_BUCKET_OPTIONS.map(o => o.minutes));
 
 // Even if logging from multiple hosts, the public dashboard will show
 // only results from this host.

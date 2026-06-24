@@ -3,7 +3,9 @@ import {
   IP_ALLOWLIST,
   PING_ANALYTICS_DATASET,
   PING_BUCKET_MINUTES,
+  PING_BUCKET_OPTIONS,
   PING_HIDDEN_TARGETS,
+  PING_RANGE_HOURS,
   PING_SOURCE_HOSTNAME,
   PING_TARGET_SETS,
   TIMEZONE,
@@ -457,7 +459,11 @@ function handleDashboardPing() {
 
   html = html.replace(
     '<script>\nfunction getColor(i, total) {',
-    '<script>\nwindow.PING_TARGET_SETS = ' + JSON.stringify(PING_TARGET_SETS) + ';\n\nfunction getColor(i, total) {'
+    '<script>\n' +
+      'window.PING_TARGET_SETS = ' + JSON.stringify(PING_TARGET_SETS) + ';\n' +
+      'window.PING_RANGE_HOURS = ' + JSON.stringify(PING_RANGE_HOURS) + ';\n' +
+      'window.PING_BUCKET_OPTIONS = ' + JSON.stringify(PING_BUCKET_OPTIONS) + ';\n\n' +
+      'function getColor(i, total) {'
   );
 
   const latencyContainers = PING_TARGET_SETS.map(function(set, i) {
