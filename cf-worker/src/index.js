@@ -351,7 +351,7 @@ WHERE
   timestamp > NOW() - INTERVAL '${hours}' HOUR AND
   blob1='${PING_SOURCE_HOSTNAME}' AND
   blob3 != 'fail' AND
-  doubl2 > 0 AND
+  double2 > 0 AND
   not blob2 in(${PING_HIDDEN_TARGETS.map(t => `'${t}'`).join(',\n    ')})
 GROUP BY target
 ORDER BY target ASC`;
