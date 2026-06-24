@@ -2,7 +2,6 @@
  * Dashboard configuration
  */
 
-
 // Timezone for displaying results in dashboard.
 // Does not affect how data is stored in Cloudflare Analytics Engine.
 export const TIMEZONE = 'America/New_York';
@@ -132,3 +131,11 @@ export const IP_ALLOWLIST = [
   '192.0.2.1',
   '192.0.2.2'
 ];
+
+
+// Show a small link to the project's source repository on the dashboard,
+// so third-party viewers can find and deploy the software themselves.
+export const SHOW_PROJECT_LINK = true;
+// URL the link points to. Override only if you maintain a fork.
+export const PROJECT_LINK_URL = 'https://github.com/az0/cf-netwatch';
+export const PROJECT_LINK_TEXT = 'cf-netwatch';

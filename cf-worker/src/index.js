@@ -9,6 +9,9 @@ import {
   PING_RANGE_HOURS,
   PING_SOURCE_HOSTNAME,
   PING_TARGET_SETS,
+  PROJECT_LINK_TEXT,
+  PROJECT_LINK_URL,
+  SHOW_PROJECT_LINK,
   TIMEZONE,
 } from './config.js';
 
@@ -463,7 +466,10 @@ function handleDashboardPing() {
     '<script>\n' +
       'window.PING_TARGET_SETS = ' + JSON.stringify(PING_TARGET_SETS) + ';\n' +
       'window.PING_RANGE_HOURS = ' + JSON.stringify(PING_RANGE_HOURS) + ';\n' +
-      'window.PING_BUCKET_OPTIONS = ' + JSON.stringify(PING_BUCKET_OPTIONS) + ';\n\n' +
+      'window.PING_BUCKET_OPTIONS = ' + JSON.stringify(PING_BUCKET_OPTIONS) + ';\n' +
+      'window.PROJECT_LINK = ' + JSON.stringify(SHOW_PROJECT_LINK
+        ? { url: PROJECT_LINK_URL, text: PROJECT_LINK_TEXT }
+        : null) + ';\n\n' +
       'function getColor(i, total) {'
   );
 
