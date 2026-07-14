@@ -4,11 +4,13 @@
 - Can be hosted on an OpenWrt router, Raspberry Pi, Linux Server, Windows WSL, etc...)
 - Store in Cloudflare Analytics Engine
 - Visualize it with a self-hosted dashboard on Cloudflare
+- Because it runs from a server within your network you can use this for LAN, VLAN, WAN, DNS, Public IP latency & packet loss monitoring.
+- Whitelist access so you can make it private or open for public viewing.
 ![https://raw.githubusercontent.com/DJDevon3/cf-netwatch/refs/heads/main/Demonstration_Screenshot.PNG](https://raw.githubusercontent.com/DJDevon3/cf-netwatch/refs/heads/main/Demonstration_Screenshot.PNG)
 
 ## What it does
 
-- **Ping monitoring**: runs `ping` against a list of targets on a schedule, records latency and packet loss.
+- **Ping monitoring**: runs `ping` against a list of targets on a schedule, records latency and packet loss.  
 - **Speedtest monitoring**: runs `speedtest-go`, records download/upload speeds, latency, jitter, and packet loss per server. Not tested yet.
 - **Dashboard**:
     - serves an HTML page with Chart.js graphs
