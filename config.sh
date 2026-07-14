@@ -8,10 +8,11 @@ WORKER_URL="${WORKER_URL:-https://cf-netwatch.yourdomain.com}"
 # Shared secret for authentication (set this, keep it private)
 SHARED_SECRET="${SHARED_SECRET:-your-secret-here}"
 
-if [[ -z "${SHARED_SECRET:-}" || "${SHARED_SECRET}" == "your-secret-here" ]]; then
+if [[ -z "${SHARED_SECRET:-}" ]]; then
     echo "ERROR: SHARED_SECRET must be set in config.sh or environment" >&2
     exit 1
 fi
+
 
 # API paths
 PING_ENDPOINT="/api/ping"
@@ -26,7 +27,7 @@ CURL_TIMEOUT="${CURL_TIMEOUT:-15}"
 # Fallback DNS for worker uploads when system DNS fails (curl rc=6).
 # Comma-separated; first entry is used with nslookup/dig + curl --resolve.
 # Set empty to disable retry.
-CURL_DNS_SERVERS="${CURL_DNS_SERVERS:-1.1.1.1,8.8.8.8}"
+# Derived from targets.json (see below).
 
 # Resolve a hostname via a specific DNS server (IPv4 only).
 resolve_host_via_dns() {
@@ -41,14 +42,31 @@ resolve_host_via_dns() {
     fi
 }
 
-# Ping targets: one per line, comments allowed.
-# You can list a combination of hostnames and IP addresses.
-# Choose targets based on your needs.
-# Prioritize targets for which uptime and latency are important.
-# Latency sensitive systems include DNS, real-time voice, and gaming.
-PING_TARGETS=(
-    "1.1.1.1"
-    "8.8.8.8"
-    "9.9.9.9"
-    "doh.opendns.com"
-)
+# DNS Servers are now configured in targets.json
+# They are separate and not to be confused with ping targets.
+# shared with the Cloudflare Worker's config.js
+TARGETS_JSON="$(dirname "$0")/cf-worker/src/targets.json"
+
+if [[ ! -f "$TARGETS_JSON" ]]; then
+    echo "ERROR: targets.json not found at $TARGETS_JSON" >&2
+    exit 1
+fi
+
+if command -v jq >/dev/null 2>&1; then
+    # DNS servers (comma-separated)
+    CURL_DNS_SERVERS="${CURL_DNS_SERVERS:-$(jq -r '[.dnsServers[].host] | join(",")' "$TARGETS_JSON")}"
+    # Ping targets
+    PING_TARGETS=()
+    while IFS= read -r host; do
+        [[ -n "$host" ]] && PING_TARGETS+=("$host")
+    done < <(jq -r '.pingTargetSets[].targets[].host' "$TARGETS_JSON")
+else
+    # Fallback without jq: extract with grep/sed
+    # DNS servers: extract from dnsServers section only
+    CURL_DNS_SERVERS="${CURL_DNS_SERVERS:-$(sed -n '/"dnsServers"/,/"pingTargetSets"/p' "$TARGETS_JSON" | grep '"host"' | sed 's/.*"host": *"//;s/".*//' | paste -sd,)}"
+    # Ping targets: extract from pingTargetSets section only
+    PING_TARGETS=()
+    while IFS= read -r host; do
+        [[ -n "$host" ]] && PING_TARGETS+=("$host")
+    done < <(sed -n '/"pingTargetSets"/,$p' "$TARGETS_JSON" | grep '"host"' | sed 's/.*"host": *"//;s/".*//')
+fi

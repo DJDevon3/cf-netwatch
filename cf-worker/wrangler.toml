@@ -6,6 +6,7 @@ compatibility_date = "2026-05-20"
 [[rules]]
 type = "Text"
 globs = ["**/*.html", "**/*.svg"]
+fallthrough = true
 
 # Analytics Engine datasets - created automatically on first write
 [[analytics_engine_datasets]]
@@ -16,7 +17,9 @@ dataset = "netwatch_ping" # this must match value in config.js
 binding = "NETWATCH_SPEEDTEST"
 dataset = "netwatch_speedtest"
 
-
 [observability.logs]
 enabled = true
 invocation_logs = true
+
+[assets]
+directory = "./assets"

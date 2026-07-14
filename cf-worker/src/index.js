@@ -199,7 +199,7 @@ function handlePing(env, body, request) {
   console.log(`[Ping] Successfully wrote ${written} data points`);
   return new Response(JSON.stringify({ ok: true, written }), {
     status: 200,
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store, no-cache, must-revalidate' },
   });
 }
 
@@ -473,14 +473,28 @@ function handleDashboardPing() {
       'function getColor(i, total) {'
   );
 
-  const latencyContainers = PING_TARGET_SETS.map(function(set, i) {
-    return '<div class="chart-container">\n  <canvas id="latencyChart' + i + '"></canvas>\n</div>';
-  }).join('\n') + '\n<div class="chart-container">\n  <canvas id="latencyChartOther"></canvas>\n</div>';
+  const lossContainers = PING_TARGET_SETS.map(function(set, i) {
+    return '<div class="chart-container">\n  <canvas id="lossChart' + i + '"></canvas>\n</div>';
+  }).join('\n') + '\n<div class="chart-container">\n  <canvas id="lossChartOther"></canvas>\n</div>';
 
   html = html.replace(
-    '<div class="chart-container">\n  <canvas id="latencyChart"></canvas>\n</div>\n<div class="chart-container">\n  <canvas id="latencyChartSlow"></canvas>\n</div>',
-    latencyContainers
+    /<div class="chart-container">\s*<canvas id="latencyChart"><\/canvas>\s*<\/div>/,
+    PING_TARGET_SETS.map(function(set, i) {
+      return '<div class="chart-container">\n  <canvas id="latencyChart' + i + '"></canvas>\n</div>';
+    }).join('\n')
   );
+
+  html = html.replace(
+    /<div class="chart-container">\s*<canvas id="latencyChartSlow"><\/canvas>\s*<\/div>/,
+    '<div class="chart-container">\n  <canvas id="latencyChartOther"></canvas>\n</div>'
+  );
+
+  html = html.replace(
+    /<div class="chart-container">\s*<canvas id="lossChart"><\/canvas>\s*<\/div>/,
+    lossContainers
+  );
+
+
 
   return new Response(html, {
     status: 200,

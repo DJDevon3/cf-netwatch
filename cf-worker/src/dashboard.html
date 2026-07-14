@@ -6,7 +6,7 @@
 <title>Ping Monitor Dashboard</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="robots" content="noindex, nofollow">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="/chart.umd.min.js"></script>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0d1117; color: #c9d1d9; padding: 24px; }
@@ -40,7 +40,7 @@
 </head>
 <body>
 <h1>Ping Monitor Dashboard</h1>
-<p class="subtitle">Latency analytics per target. Cards show median, p95, and p99 from each run's average ping latency; charts show bucketed average latency and packet loss.</p>
+<p class="subtitle">Latency analytics using CloudFlare workers (free).</p>
 
 <div class="error" id="error"></div>
 
@@ -53,8 +53,6 @@
 </div>
 
 <div class="summary" id="summary"></div>
-
-<p>Click below on a legend item on a chart to show or hide that target. (It does not affect card sparklines above.)</p>
 
 <div class="chart-container">
   <canvas id="latencyChart"></canvas>
@@ -76,14 +74,21 @@ function getColor(i, total) {
   return 'hsl(' + hue + ', 75%, 60%)';
 }
 const targetSets = window.PING_TARGET_SETS || [];
+const targetLabelMap = new Map();
 const latencyCharts = {};
-let chart2 = null;
+const lossCharts = {};
 const hiddenLatencyBySet = {};
-const hiddenLossTargets = new Set();
+const hiddenLossBySet = {};
+
 
 function getHiddenSet(label) {
   if (!hiddenLatencyBySet[label]) hiddenLatencyBySet[label] = new Set();
   return hiddenLatencyBySet[label];
+}
+
+function getHiddenLossSet(label) {
+  if (!hiddenLossBySet[label]) hiddenLossBySet[label] = new Set();
+  return hiddenLossBySet[label];
 }
 
 function legendOnClick(hiddenTargets) {
@@ -127,7 +132,8 @@ async function loadData() {
   errorEl.style.display = 'none';
 
   try {
-    const res = await fetch('/api/analytics/ping?hours=' + hours + '&interval=' + interval);
+    const res = await fetch('/api/analytics/ping?hours=' + hours + '&interval=' + interval + '&_t=' + Date.now());
+
     if (!res.ok) throw new Error('HTTP ' + res.status);
     const json = await res.json();
     if (json.error) throw new Error(json.error);
@@ -140,16 +146,17 @@ async function loadData() {
 }
 
 function renderDashboard(json) {
-  renderSummary(json.summary, json.series);
-
   const targetToSet = new Map();
   for (const set of targetSets) {
     for (const t of set.targets) {
-      if (!targetToSet.has(t)) {
-        targetToSet.set(t, set.label);
+      if (!targetToSet.has(t.host)) {
+        targetToSet.set(t.host, set.grouplabel);
+        targetLabelMap.set(t.host, t.hostlabel);
       }
     }
   }
+
+  renderSummary(json.summary, json.series);
 
   const seriesBySet = {};
   for (const s of json.series) {
@@ -165,15 +172,33 @@ function renderDashboard(json) {
     }
   }
 
+  for (const label in lossCharts) {
+    if (lossCharts[label]) {
+      lossCharts[label].destroy();
+      delete lossCharts[label];
+    }
+  }
+
   targetSets.forEach(function(set, i) {
-    var series = seriesBySet[set.label] || [];
-    renderLatencyChart(series, 'latencyChart' + i, 'Average Ping Latency (ms) - ' + set.label, set.label);
+    var series = seriesBySet[set.grouplabel] || [];
+    var hasData = series.length > 0;
+    var latContainer = document.getElementById('latencyChart' + i);
+    var lossContainer = document.getElementById('lossChart' + i);
+    if (latContainer) latContainer.parentElement.style.display = hasData ? '' : 'none';
+    if (lossContainer) lossContainer.parentElement.style.display = hasData ? '' : 'none';
+    renderLatencyChart(series, 'latencyChart' + i, 'Average Ping Latency (ms) - ' + set.grouplabel, set.grouplabel);
+    renderLossChart(series, 'lossChart' + i, 'Packet Loss (%) - ' + set.grouplabel, set.grouplabel);
   });
 
   var otherSeries = seriesBySet['Other'] || [];
+  var otherHasData = otherSeries.length > 0;
+  var otherLatContainer = document.getElementById('latencyChartOther');
+  var otherLossContainer = document.getElementById('lossChartOther');
+  if (otherLatContainer) otherLatContainer.parentElement.style.display = otherHasData ? '' : 'none';
+  if (otherLossContainer) otherLossContainer.parentElement.style.display = otherHasData ? '' : 'none';
   renderLatencyChart(otherSeries, 'latencyChartOther', 'Average Ping Latency (ms) - Other', 'Other');
+  renderLossChart(otherSeries, 'lossChartOther', 'Packet Loss (%) - Other', 'Other');
 
-  renderLossChart(json.series);
 }
 
 /**
@@ -206,7 +231,9 @@ function renderSummary(summary, series) {
       ? renderSparkline(seriesByTarget[s.target].avg_ms, sparklineColor(latencyForColor))
       : '';
     return '<div class="card">' +
-      '<h3>' + esc(s.target) + '</h3>' +
+      '<h3>' + esc(targetLabelMap.get(s.target) || s.target) + '</h3>' +
+      '<div style="font-size:0.7rem;color:#6e7681;margin-bottom:6px">' + esc(s.target) + '</div>' +
+
       '<div class="metric-main"><div class="value">' + formatLatencyMs(s.median_ms) + '</div><div class="metric-label">median</div></div>' +
       '<div class="percentiles">' +
         '<div class="percentile"><span class="percentile-label">p95</span><span class="percentile-value">' + formatLatencyMs(s.p95_ms) + '</span></div>' +
@@ -306,7 +333,7 @@ function renderLatencyChart(series, canvasId, title, label) {
   const datasets = series.map((s, i) => {
     const color = getColor(i, total);
     return {
-      label: s.target,
+      label: targetLabelMap.get(s.target) || s.target,
       data: alignSeriesToTimeline(timestamps, s.timestamps, s.avg_ms, v => v > 0 ? v : null),
       borderColor: color,
       backgroundColor: color,
@@ -354,16 +381,22 @@ function renderLatencyChart(series, canvasId, title, label) {
   latencyCharts[label] = chart;
 }
 
-function renderLossChart(series) {
-  if (chart2) chart2.destroy();
-  const ctx = document.getElementById('lossChart').getContext('2d');
+function renderLossChart(series, canvasId, title, label) {
+  if (lossCharts[label]) {
+    lossCharts[label].destroy();
+    delete lossCharts[label];
+  }
+  if (!series || series.length === 0) {
+    return;
+  }
+  const ctx = document.getElementById(canvasId).getContext('2d');
   const total = series.length;
   const timestamps = buildChartTimeline(series);
 
   const datasets = series.map((s, i) => {
     const color = getColor(i, total);
     return {
-      label: s.target,
+      label: targetLabelMap.get(s.target) || s.target,
       data: alignSeriesToTimeline(timestamps, s.timestamps, s.avg_loss_pct),
       borderColor: color,
       backgroundColor: color,
@@ -375,7 +408,7 @@ function renderLossChart(series) {
     };
   });
 
-  chart2 = new Chart(ctx, {
+  const chart = new Chart(ctx, {
     type: 'line',
     data: { labels: timestamps.map(t => formatTime(t)), datasets },
     options: {
@@ -383,8 +416,8 @@ function renderLossChart(series) {
       maintainAspectRatio: false,
       interaction: { mode: 'index', intersect: false },
       plugins: {
-        title: { display: true, text: 'Packet Loss (%)', color: '#c9d1d9', font: { size: 14 } },
-        legend: chartLegendOptions(hiddenLossTargets),
+        title: { display: true, text: title, color: '#c9d1d9', font: { size: 14 } },
+        legend: chartLegendOptions(getHiddenLossSet(label)),
         tooltip: {
           itemSort: (a, b) => (b.raw == null ? -Infinity : b.raw) - (a.raw == null ? -Infinity : a.raw),
           callbacks: {
@@ -401,8 +434,11 @@ function renderLossChart(series) {
       },
     },
   });
-  applyHiddenTargets(chart2, hiddenLossTargets);
+  const hiddenTargets = getHiddenLossSet(label);
+  applyHiddenTargets(chart, hiddenTargets);
+  lossCharts[label] = chart;
 }
+
 
 function formatTime(ts) {
   const d = new Date(ts);
