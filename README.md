@@ -1,11 +1,14 @@
 # cf-netwatch
 
 - Monitor network connectivity and performance from a Linux/POSIX-style host
-- Can be hosted on an OpenWrt router, Raspberry Pi, Linux Server, Windows WSL, etc...)
+- Can be hosted on an OpenWrt router, Raspberry Pi, Linux Server, Windows WSL, etc...
 - Store in Cloudflare Analytics Engine
 - Visualize it with a self-hosted dashboard on Cloudflare
-- Because it runs from a server within your network you can use this for LAN, VLAN, WAN, DNS, Public IP latency & packet loss monitoring.
-- Whitelist access so you can make it private or open for public viewing.
+- Because it runs from a server within your network you can use this for basic LAN, VLAN, WAN, DNS, Public IP latency & packet loss monitoring.
+- Whitelist access
+
+## Example Screenshot
+
 ![https://raw.githubusercontent.com/DJDevon3/cf-netwatch/refs/heads/main/Demonstration_Screenshot.PNG](https://raw.githubusercontent.com/DJDevon3/cf-netwatch/refs/heads/main/Demonstration_Screenshot.PNG)
 
 ## What it does
