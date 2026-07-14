@@ -1,9 +1,10 @@
 # cf-netwatch
 
-- Monitor network connectivity and performance from a Linux/POSIX-style
- host (e.g., an OpenWrt router, Raspberry Pi, or a home server)
+- Monitor network connectivity and performance from a Linux/POSIX-style host
+- Can be hosted on an OpenWrt router, Raspberry Pi, Linux Server, Windows WSL, etc...)
 - Store in Cloudflare Analytics Engine
 - Visualize it with a self-hosted dashboard on Cloudflare
+![https://raw.githubusercontent.com/DJDevon3/cf-netwatch/refs/heads/main/Demonstration_Screenshot.PNG](https://raw.githubusercontent.com/DJDevon3/cf-netwatch/refs/heads/main/Demonstration_Screenshot.PNG)
 
 ## What it does
 
@@ -128,9 +129,11 @@ cf-netwatch/
 ├── cf-worker/
 │   ├── src/
 │   │   ├── index.js          # Worker: routes, auth, AE queries
-│   │   ├── config.js         # Dashboard config (timezone, target sets, hidden targets)
+│   │   ├── config.js         # Dashboard config (timezone, hidden targets)
+│   │   ├── targets.json      # DNS & IP config (target sets)
 │   │   └── dashboard.html    # Static HTML + Chart.js dashboard
 │   └── wrangler.toml         # Worker deployment config
+├── .env                      # Cloudflair Account API Token
 ├── config.sh                 # Shared config (URL, secret, targets)
 ├── ping-monitor.sh           # Bash: ping targets, POST results
 ├── speedtest-monitor.sh      # Bash: speedtest, POST results
