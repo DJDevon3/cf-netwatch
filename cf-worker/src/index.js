@@ -30,6 +30,14 @@ import {
  * Auth: X-Shared-Secret header must match SHARED_SECRET secret.
  */
 
+// Build a lookup map: target host -> grouplabel
+const TARGET_GROUP_MAP = {};
+for (const set of PING_TARGET_SETS) {
+  for (const target of set.targets) {
+    TARGET_GROUP_MAP[target.host] = set.grouplabel;
+  }
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 function unauthorized() {
@@ -183,8 +191,10 @@ function handlePing(env, body, request) {
     const hn = String(hostname).slice(0, 128);
 
     console.log(`[Ping] Writing data point: hostname=${hn}, target=${target}, status=${status}, avg_ms=${r.avg_ms}, loss_pct=${r.loss_pct}`);
+    const grouplabel = String(TARGET_GROUP_MAP[target] || 'Other').slice(0, 256);
+
     env.NETWATCH_PING.writeDataPoint({
-      blobs: [hn, target, status, asNumber, asName, clientIp],
+      blobs: [hn, target, status, asNumber, asName, clientIp, grouplabel],
       doubles: [
         Number(r.min_ms) || 0,
         Number(r.avg_ms) || 0,
@@ -326,6 +336,7 @@ Workaround: Use 999999.0 for min and 0.0 for max when blob3='fail'.
   const sql = `SELECT
     ${pingTimeBucketExpr(interval)} AS time_bucket,
     blob2 AS target,
+    blob7 AS grouplabel,
     round(SUMIf(_sample_interval * double2, blob3 != 'fail' and double2>0) / SUMIf(_sample_interval, blob3 != 'fail' and double2>0),2) AS avg_ms,
     min(if(blob3 != 'fail' or double2=0, double2, 999999.0)) AS min_ms,
     max(if(blob3 != 'fail' or double2=0, double2, 0.0)) AS max_ms,
@@ -338,11 +349,12 @@ WHERE
   timestamp > NOW() - INTERVAL '${hours}' HOUR and
   blob1='${PING_SOURCE_HOSTNAME}' and
   not blob2 in(${PING_HIDDEN_TARGETS.map(t => `'${t}'`).join(',\n    ')})
-GROUP BY time_bucket, target
+GROUP BY time_bucket, target, grouplabel
 ORDER BY time_bucket ASC, target ASC`;
 
   const summarySql = `SELECT
     blob2 AS target,
+    blob7 AS grouplabel,
     round(quantileExactWeighted(0.5)(double2, _sample_interval),2) AS median_ms,
     round(quantileExactWeighted(0.95)(double2, _sample_interval),2) AS p95_ms,
     round(quantileExactWeighted(0.99)(double2, _sample_interval),2) AS p99_ms
@@ -353,7 +365,7 @@ WHERE
   blob3 != 'fail' AND
   double2 > 0 AND
   not blob2 in(${PING_HIDDEN_TARGETS.map(t => `'${t}'`).join(',\n    ')})
-GROUP BY target
+GROUP BY target, grouplabel
 ORDER BY target ASC`;
 
   try {
@@ -383,6 +395,7 @@ ORDER BY target ASC`;
       if (!seriesMap[target]) {
         seriesMap[target] = {
           target,
+		  grouplabel: row.grouplabel || null,
           timestamps: [],
           avg_ms: [],
           min_ms: [],
@@ -424,6 +437,7 @@ ORDER BY target ASC`;
       const sqlLatency = latencyByTarget[s.target] || {};
       return {
         target: s.target,
+		grouplabel: s.grouplabel,
         avg_ms: Math.round(avgLatency * 100) / 100,
         median_ms: sqlLatency.median_ms != null ? sqlLatency.median_ms : null,
         p95_ms: sqlLatency.p95_ms != null ? sqlLatency.p95_ms : null,

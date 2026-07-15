@@ -49,15 +49,7 @@ export const PING_ANALYTICS_DATASET = 'netwatch_ping';
 // This avoids redundent code having them in 2 different files.
 // Ensure the path is correct for your install. 
 import targetsConfig from './targets.json';
-export const PING_TARGET_SETS = [
-  ...targetsConfig.pingTargetSets,
-  {
-    grouplabel: 'DNS Servers',
-    targets: targetsConfig.dnsServers,
-  },
-];
-
-
+export const PING_TARGET_SETS = targetsConfig.pingTargetSets;
 
 /*
 PING_HIDDEN_TARGETS: targets that will not be published
@@ -73,7 +65,7 @@ Unsupported formats include: CIDR, ranges, netmasks, and glob patterns.
 export const PING_HIDDEN_TARGETS = [
   // Private IPv4 addresses
   '172.0.0.1',
-  '192.168.1.1',
+  '192.168.2.1',
 
   // Loopback
   'localhost',

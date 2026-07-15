@@ -1,17 +1,20 @@
 {
-  "dnsServers": [
-    { "host": "1.1.1.1", "hostlabel": "Cloudflare DNS" },
-    { "host": "8.8.8.8", "hostlabel": "Google DNS" },
-    { "host": "75.75.75.75", "hostlabel": "Comcast DNS" },
-    { "host": "205.171.3.65", "hostlabel": "CenturyLink DNS" }
-  ],
   "pingTargetSets": [
+    {
+      "grouplabel": "DNS Servers",
+      "targets": [
+        { "host": "1.1.1.1", "hostlabel": "Cloudflare DNS" },
+        { "host": "8.8.8.8", "hostlabel": "Google DNS" },
+        { "host": "75.75.75.75", "hostlabel": "Comcast DNS" },
+        { "host": "205.171.3.65", "hostlabel": "CenturyLink DNS" }
+      ]
+    },
     {
       "grouplabel": "CDN",
       "targets": [
-        { "host": "cloudflare.com", "hostlabel": "Cloudflare" },
-        { "host": "fastly.com", "hostlabel": "Fastly" },
-        { "host": "akamai.com", "hostlabel": "Akamai" }
+        { "host": "cloudflare.com", "hostlabel": "Cloudflare CDN" },
+        { "host": "fastly.com", "hostlabel": "Fastly CDN" },
+        { "host": "akamai.com", "hostlabel": "Akamai CDN" }
       ]
     },
     {
@@ -22,11 +25,18 @@
       ]
     },
     {
+      "grouplabel": "LAN",
+      "targets": [
+        { "host": "192.168.1.1", "hostlabel": "VLAN20" },
+        { "host": "192.168.5.1", "hostlabel": "LAN2" }
+      ]
+    },
+    {
       "grouplabel": "Xfinity Southeast Backbones",
       "targets": [
-        { "host": "96.110.45.65", "hostlabel": "Xfinity FL Backbone" },
-        { "host": "96.110.40.41", "hostlabel": "Xfinity GA Backbone" },
-        { "host": "96.108.75.98", "hostlabel": "Xfinity VA Backbone" }
+        { "host": "96.110.45.65", "hostlabel": "Xfinity FL" },
+        { "host": "96.110.40.41", "hostlabel": "Xfinity GA" },
+        { "host": "96.108.75.98", "hostlabel": "Xfinity VA" }
       ]
     }
   ]

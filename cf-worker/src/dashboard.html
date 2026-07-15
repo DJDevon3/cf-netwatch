@@ -156,11 +156,11 @@ function renderDashboard(json) {
     }
   }
 
-  renderSummary(json.summary, json.series);
+  renderSummary(json.summary, json.series, targetToSet);
 
   const seriesBySet = {};
   for (const s of json.series) {
-    const label = targetToSet.get(s.target) || 'Other';
+    const label = s.grouplabel || targetToSet.get(s.target) || 'Other';
     if (!seriesBySet[label]) seriesBySet[label] = [];
     seriesBySet[label].push(s);
   }
@@ -207,7 +207,7 @@ function renderDashboard(json) {
  * @param {Array} summary - Array of summary objects with target stats (median_ms, p95_ms, p99_ms, ok, fail, availability)
  * @param {Array} series - Array of time series data for each target (used for sparklines)
  */
-function renderSummary(summary, series) {
+function renderSummary(summary, series, targetToSet) {
   const el = document.getElementById('summary');
   if (!summary || summary.length === 0) {
     el.innerHTML = '<div class="card"><h3>No data</h3><div class="value">-</div></div>';
@@ -230,9 +230,12 @@ function renderSummary(summary, series) {
     const spark = seriesByTarget[s.target]
       ? renderSparkline(seriesByTarget[s.target].avg_ms, sparklineColor(latencyForColor))
       : '';
+    const grouplabel = s.grouplabel || (targetToSet && targetToSet.get(s.target)) || 'Other';
     return '<div class="card">' +
       '<h3>' + esc(targetLabelMap.get(s.target) || s.target) + '</h3>' +
+      '<div style="font-size:0.65rem;color:#8b949e;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">' + esc(grouplabel) + '</div>' +
       '<div style="font-size:0.7rem;color:#6e7681;margin-bottom:6px">' + esc(s.target) + '</div>' +
+
 
       '<div class="metric-main"><div class="value">' + formatLatencyMs(s.median_ms) + '</div><div class="metric-label">median</div></div>' +
       '<div class="percentiles">' +
